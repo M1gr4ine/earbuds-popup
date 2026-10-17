@@ -1,0 +1,24 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.earbuds.popup" android:versionCode="7" android:versionName="1.0.3">
+<uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35"/>
+<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+<uses-permission android:name="android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE"/>
+<uses-permission android:name="android.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND"/>
+<uses-permission android:name="android.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND"/>
+<uses-feature android:name="android.software.companion_device_setup" android:required="false"/>
+<application android:label="耳机弹窗" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@style/AppTheme" android:allowBackup="false" android:debuggable="false" android:supportsRtl="true">
+<activity android:name=".SetupActivity" android:exported="true">
+<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+</activity>
+<service android:name=".PopupService" android:exported="false" android:foregroundServiceType="connectedDevice" android:stopWithTask="false"/>
+<service android:name=".EarbudCompanionService" android:exported="true" android:permission="android.permission.BIND_COMPANION_DEVICE_SERVICE">
+<intent-filter><action android:name="android.companion.CompanionDeviceService"/></intent-filter>
+<property android:name="android.companion.PROPERTY_PRIMARY_COMPANION_DEVICE_SERVICE" android:value="true"/>
+</service>
+<receiver android:name=".BootReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter></receiver>
+</application></manifest>
