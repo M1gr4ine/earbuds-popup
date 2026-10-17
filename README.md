@@ -8,7 +8,7 @@
 
 **公开版只提供原创线条耳机示意，不内置华为或 vivo 的产品素材。可在应用内按型号导入自己的图片和动画。**
 
-**[下载最新 APK](https://github.com/M1gr4ine/earbuds-popup/releases/latest)** · [v1.0.3 更新说明](docs/releases/v1.0.3.md) · [构建指南](docs/BUILDING.md)
+**[下载最新 APK](https://github.com/M1gr4ine/earbuds-popup/releases/latest)** · [v1.0.5 更新说明](docs/releases/v1.0.5.md) · [构建指南](docs/BUILDING.md)
 
 ## 功能
 
@@ -23,7 +23,7 @@
 
 ## 安装与启用
 
-1. 从 [Releases](https://github.com/M1gr4ine/earbuds-popup/releases) 下载 `Earbuds-Popup-1.0.3.apk` 并安装。
+1. 从 [Releases](https://github.com/M1gr4ine/earbuds-popup/releases) 下载 `Earbuds-Popup-1.0.5.apk` 并安装。
 2. 先在系统蓝牙设置里完成耳机配对，再打开“耳机弹窗”选择已配对设备。
 3. 按系统提示授予蓝牙 / 附近设备权限，完成系统设备关联，并允许悬浮窗和通知。
 4. 在 vivo / iQOO 的后台耗电管理中，把“耳机弹窗”设为 **允许后台耗电**；其它系统按各自的后台管理规则设置。
@@ -53,7 +53,7 @@
 
 单个文件不超过 **40 MiB**；图片单边不超过 **4096 px**；视频单边不超过 **1920 px**、时长不超过 **60 秒**。实际可播放格式取决于系统解码能力。
 
-自定义背景可通过“显示耳机本体”开关叠加独立耳机图，默认关闭。本机 FreeBuds 6i 的配套本体使用原旋转素材，在 Android 13 及以上实时去除白底；更早系统保留静态透明图。使用“导入耳机透明图”选择已抠图的 PNG 或静态 WebP；耳机图需保留透明边距，可与背景分别更换、清除。
+自定义背景可通过“显示耳机本体”开关叠加独立耳机图，默认关闭。公开版需先使用“导入耳机透明图”选择已抠图的 PNG 或静态 WebP；耳机图需保留透明边距，可与背景分别更换、清除。FreeBuds 6i 的配套原视频可在包含本地素材的构建中循环旋转，并在 Android 13 及以上实时去除白底；公开 APK 不附带这套素材，导入的本体图片保持静态。
 
 素材与外观按型号保存。导入素材默认裁切填满卡片，也可切换为完整显示。新型号没有匹配素材时不会套用 6i 图片。
 
