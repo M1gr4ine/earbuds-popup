@@ -19,6 +19,8 @@ public final class PopupConfigTest {
         PopupConfig sixI = PopupConfig.defaults(DeviceModel.MODEL_FREEBUDS_6I);
         PopupConfig unknown = PopupConfig.defaults(DeviceModel.MODEL_UNKNOWN);
         equal("", sixI.assetId, "Public 6i defaults start without bundled model artwork");
+        expect(!sixI.showEarbuds, "Body cutouts stay hidden by default for old profiles");
+        equal("", sixI.earbudAssetId, "Profiles start without an imported body cutout");
         equal(32, sixI.radiusDp, "Card radius uses the agreed 32 dp default");
         equal("", unknown.assetId, "Unknown models start without borrowed art");
         for (String modelId : DeviceModel.availableModelIds()) {
@@ -45,6 +47,7 @@ public final class PopupConfigTest {
         invalid.durationMs = 100;
         invalid.videoSpeed = Float.NaN;
         invalid.assetId = null;
+        invalid.earbudAssetId = "  media:\nbody  ";
         PopupConfig safe = invalid.sanitized();
 
         equal(2, safe.position, "Invalid position returns to the bottom default");
@@ -56,6 +59,7 @@ public final class PopupConfigTest {
         equal(5000, safe.durationMs, "Out-of-range duration returns to its default");
         expect(Math.abs(1f - safe.videoSpeed) < 0.0001f, "NaN speed returns to normal speed");
         equal("", safe.assetId, "Missing media becomes the empty selection");
+        equal("", safe.earbudAssetId, "Unsafe body media IDs become the empty selection");
         equal(10, invalid.widthPercent, "Sanitizing does not mutate its source");
 
         PopupConfig speed = PopupConfig.defaults(DeviceModel.MODEL_UNKNOWN);
@@ -65,7 +69,19 @@ public final class PopupConfigTest {
 
         PopupConfig copy = sixI.copy();
         copy.assetId = "custom:one";
+        copy.showEarbuds = true;
+        copy.earbudAssetId = "media:body-one";
         equal("", sixI.assetId, "copy is independent from its source");
+        expect(!sixI.showEarbuds, "Body visibility copies are independent from their source");
+        equal("", sixI.earbudAssetId, "Body image copies are independent from their source");
+
+        PopupConfig configuredCutout = new PopupConfig();
+        configuredCutout.showEarbuds = true;
+        configuredCutout.earbudAssetId = "  media:body-two  ";
+        PopupConfig safeCutout = configuredCutout.sanitized();
+        expect(safeCutout.showEarbuds, "Body visibility survives sanitization");
+        equal("media:body-two", safeCutout.earbudAssetId,
+                "Body media IDs are trimmed during sanitization");
         System.out.println("PASS: profile defaults, independent copies, bounds, NaN, and infinity");
     }
 }

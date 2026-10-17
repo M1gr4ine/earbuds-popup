@@ -9,10 +9,10 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Outline;
 import android.graphics.LinearGradient;
 import android.graphics.Shader;
 import android.graphics.drawable.AnimatedImageDrawable;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
@@ -27,6 +27,7 @@ import android.view.Gravity;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.view.ViewOutlineProvider;
 import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -63,6 +64,8 @@ public final class PopupCardView extends FrameLayout {
     private final FrameLayout card;
     private final FrameLayout mediaContainer;
     private final ImageView imageView;
+    private ImageView earbudImageView;
+    private EarbudRotationView earbudRotationView;
     private final LinearLayout batteryRow;
     private final LinearLayout batteryCells;
     private final BatteryCellView leftBatteryCell;
@@ -123,8 +126,17 @@ public final class PopupCardView extends FrameLayout {
                 Color.green(configuredColor), Color.blue(configuredColor)));
         cardBackground.setCornerRadius(dp(Math.max(0, this.config.radiusDp)));
         card.setBackground(cardBackground);
+        // Give every child (including TextureView and scrims) the same silhouette.
+        // Overlay windows have no shadow inset: elevation would be cut off at the
+        // window edge and leave a dark rim beneath the bottom rounded corners.
+        card.setOutlineProvider(new ViewOutlineProvider() {
+            @Override public void getOutline(View view, Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
+                        dp(PopupCardView.this.config.radiusDp));
+            }
+        });
         card.setClipToOutline(true);
-        card.setElevation(dp(8));
+        card.setElevation(0f);
         addView(card, new FrameLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.CENTER));
 
@@ -196,6 +208,50 @@ public final class PopupCardView extends FrameLayout {
         if (customMedia) {
             card.addView(mediaContainer, new FrameLayout.LayoutParams(
                     LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+            if (this.config.showEarbuds) {
+                earbudImageView = new ImageView(context);
+                earbudImageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                earbudImageView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                FrameLayout.LayoutParams earbudParams = new FrameLayout.LayoutParams(
+                        LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+                earbudParams.topMargin = dp(HEADER_HEIGHT_DP);
+                earbudParams.bottomMargin = dp(this.config.showBattery
+                        ? BATTERY_ROW_HEIGHT_DP + CUSTOM_BATTERY_BOTTOM_DP : BOTTOM_PADDING_DP);
+                earbudParams.leftMargin = dp(24);
+                earbudParams.rightMargin = dp(24);
+                card.addView(earbudImageView, earbudParams);
+                if (DeviceModel.MODEL_FREEBUDS_6I.equals(this.modelId)
+                        && this.config.earbudAssetId.isEmpty()
+                        && EarbudRotationView.isSupported()
+                        && ValueAnimator.areAnimatorsEnabled()) {
+                    try {
+                        earbudRotationView = new EarbudRotationView(context,
+                                new EarbudRotationView.Listener() {
+                            @Override public void onReady() {
+                                if (released || earbudRotationView == null) return;
+                                earbudRotationView.setAlpha(1f);
+                                earbudImageView.setVisibility(View.INVISIBLE);
+                            }
+                            @Override public void onError() {
+                                if (released || earbudRotationView == null) return;
+                                earbudRotationView.setAlpha(0f);
+                                earbudImageView.setVisibility(View.VISIBLE);
+                            }
+                        });
+                        // A visible TextureView must attach before it can publish its
+                        // first video frame. Keep a nonzero, imperceptible alpha so
+                        // HWUI also draws the texture before its ready callback.
+                        earbudRotationView.setAlpha(0.001f);
+                        earbudRotationView.setPlaybackSpeed(this.config.videoSpeed);
+                        card.addView(earbudRotationView,
+                                new FrameLayout.LayoutParams(earbudParams));
+                    } catch (RuntimeException | LinkageError error) {
+                        if (earbudRotationView != null) earbudRotationView.release();
+                        earbudRotationView = null;
+                        Log.w(TAG, "Earbud rotation unavailable; keeping static cutout", error);
+                    }
+                }
+            }
             card.addView(new GradientScrimView(context, true), new FrameLayout.LayoutParams(
                     LayoutParams.MATCH_PARENT, dp(CUSTOM_TOP_SCRIM_DP), Gravity.TOP));
             GradientScrimView bottomScrim = new GradientScrimView(context, false);
@@ -230,6 +286,7 @@ public final class PopupCardView extends FrameLayout {
         setAlpha(0f);
         setTranslationY(travelY);
         loadSelectedMedia();
+        loadEarbudImage();
     }
 
     /** Total height for the host WindowManager region, in density-independent pixels. */
@@ -280,7 +337,9 @@ public final class PopupCardView extends FrameLayout {
             videoTexture.setSurfaceTextureListener(null);
             videoTexture = null;
         }
+        if (earbudRotationView != null) earbudRotationView.release();
         imageView.setImageDrawable(null);
+        if (earbudImageView != null) earbudImageView.setImageDrawable(null);
         mediaContainer.removeAllViews();
     }
 
@@ -421,6 +480,30 @@ public final class PopupCardView extends FrameLayout {
         caseBatteryCell.stopAnimators();
         overallBatteryCell.stopAnimators();
         unknownBatteryBadge.stopAnimators();
+    }
+
+    private void loadEarbudImage() {
+        if (earbudImageView == null) return;
+        final int generation = mediaGeneration;
+        MediaLibrary.executeIo(() -> {
+            Drawable decoded = null;
+            if (!released) {
+                try {
+                    decoded = MediaLibrary.decodeEarbudImage(appContext, modelId,
+                            config.earbudAssetId);
+                } catch (IOException | RuntimeException | OutOfMemoryError error) {
+                    Log.w(TAG, "Earbud image unavailable", error);
+                }
+            }
+            final Drawable image = decoded;
+            main.post(() -> {
+                if (released || generation != mediaGeneration) {
+                    stopIfAnimated(image);
+                    return;
+                }
+                earbudImageView.setImageDrawable(image);
+            });
+        });
     }
 
     private void loadSelectedMedia() {
@@ -843,8 +926,8 @@ public final class PopupCardView extends FrameLayout {
             setFocusable(true);
             setBackground(new RippleDrawable(
                     ColorStateList.valueOf(onImage ? 0x33FFFFFF : 0x16000000),
-                    new ColorDrawable(onImage ? 0x36000000 : Color.TRANSPARENT),
-                    new CircleMask(onImage ? 0x4D000000 : Color.WHITE)));
+                    null,
+                    new CircleMask(Color.WHITE)));
             strokePaint.setColor(onImage ? Color.WHITE : Color.rgb(137, 142, 148));
             strokePaint.setStyle(Paint.Style.STROKE);
             strokePaint.setStrokeCap(Paint.Cap.ROUND);

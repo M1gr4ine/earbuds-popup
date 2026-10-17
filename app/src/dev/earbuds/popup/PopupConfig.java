@@ -15,6 +15,10 @@ public final class PopupConfig {
     public boolean fitCrop = false;
     public boolean showBattery = true;
     public String assetId = "";
+    /** Whether custom popup media may be accompanied by a separate earbud cutout. */
+    public boolean showEarbuds = false;
+    /** Imported transparent PNG/WebP cutout for this model profile. */
+    public String earbudAssetId = "";
 
     public PopupConfig() {}
 
@@ -32,6 +36,8 @@ public final class PopupConfig {
         value.fitCrop = fitCrop;
         value.showBattery = showBattery;
         value.assetId = assetId;
+        value.showEarbuds = showEarbuds;
+        value.earbudAssetId = earbudAssetId;
         return value;
     }
 
@@ -49,6 +55,7 @@ public final class PopupConfig {
         value.videoSpeed = finite(videoSpeed) && videoSpeed >= 0.5f && videoSpeed <= 2f
                 ? videoSpeed : 1.0f;
         value.assetId = safeAssetId(assetId);
+        value.earbudAssetId = safeAssetId(earbudAssetId);
         return value;
     }
 

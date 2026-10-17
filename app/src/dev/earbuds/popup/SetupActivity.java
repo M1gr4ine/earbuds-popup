@@ -47,6 +47,8 @@ public final class SetupActivity extends Activity {
     private static final int REQUEST_PERMISSIONS = 7410;
     private static final int REQUEST_OVERLAY = 7411;
     private static final int REQUEST_MEDIA = 7412;
+    private static final int REQUEST_EARBUD_IMAGE = 7413;
+    private static final String STATE_IMPORTING_FOR_MODEL = "media.importingForModel";
     private static final int REQUEST_ASSOCIATION = CompanionLink.REQUEST_CODE;
     private static final String ACTION_BATTERY_UPDATED = "dev.earbuds.popup.BATTERY_UPDATED";
     private static final int COLOR_TEXT = Color.rgb(32, 36, 44);
@@ -62,6 +64,7 @@ public final class SetupActivity extends Activity {
     private LinearLayout content;
     private TextView statusView;
     private TextView mediaView;
+    private TextView earbudView;
     private TextView batteryView;
     private TextView saveStateView;
     private DeviceStore.DeviceRecord selected;
@@ -86,10 +89,16 @@ public final class SetupActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        if (state != null) importingForModel = state.getString(STATE_IMPORTING_FOR_MODEL);
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         loadSelectionAndConfig();
         buildSettings();
+    }
+
+    @Override protected void onSaveInstanceState(Bundle state) {
+        if (importingForModel != null) state.putString(STATE_IMPORTING_FOR_MODEL, importingForModel);
+        super.onSaveInstanceState(state);
     }
 
     @Override protected void onStart() {
@@ -132,9 +141,10 @@ public final class SetupActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_MEDIA) {
+        if (requestCode == REQUEST_MEDIA || requestCode == REQUEST_EARBUD_IMAGE) {
             if (resultCode == RESULT_OK && data != null && data.getData() != null) {
-                beginImport(data.getData());
+                if (requestCode == REQUEST_EARBUD_IMAGE) beginEarbudImport(data.getData());
+                else beginImport(data.getData());
             }
             return;
         }
@@ -324,6 +334,28 @@ public final class SetupActivity extends Activity {
         add(actions, clearButton, 0, 1f);
         add(card, actions, 0);
         updateMediaSummary();
+
+        add(card, text("耳机本体", 16, COLOR_TEXT), 2);
+        Switch earbudToggle = addSwitch(card, "显示耳机本体", config.showEarbuds,
+                (button, checked) -> {
+                    config.showEarbuds = checked;
+                    updateEarbudSummary();
+                });
+        earbudToggle.setEnabled(selected != null);
+        earbudView = text("", 13, COLOR_MUTED);
+        earbudView.setLineSpacing(dp(3), 1f);
+        add(card, earbudView, 8);
+        LinearLayout earbudActions = row();
+        Button importEarbudButton = button("导入耳机透明图");
+        importEarbudButton.setOnClickListener(v -> chooseEarbudImage());
+        Button clearEarbudButton = button("清除耳机图");
+        clearEarbudButton.setOnClickListener(v -> clearEarbudImage());
+        importEarbudButton.setEnabled(selected != null);
+        clearEarbudButton.setEnabled(selected != null);
+        add(earbudActions, importEarbudButton, 0, 1f);
+        add(earbudActions, clearEarbudButton, 0, 1f);
+        add(card, earbudActions, 0);
+        updateEarbudSummary();
     }
 
     private void buildAppearanceSection() {
@@ -659,6 +691,16 @@ public final class SetupActivity extends Activity {
         startActivityForResult(picker, REQUEST_MEDIA);
     }
 
+    private void chooseEarbudImage() {
+        importingForModel = currentModelId();
+        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        picker.addCategory(Intent.CATEGORY_OPENABLE);
+        picker.setType("image/*");
+        picker.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/png", "image/webp"});
+        picker.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivityForResult(picker, REQUEST_EARBUD_IMAGE);
+    }
+
     private void beginImport(Uri uri) {
         final String targetModel = importingForModel == null
                 ? currentModelId() : importingForModel;
@@ -693,10 +735,41 @@ public final class SetupActivity extends Activity {
         });
     }
 
+    private void beginEarbudImport(Uri uri) {
+        final String targetModel = importingForModel == null
+                ? currentModelId() : importingForModel;
+        Toast.makeText(this, "正在检查耳机图的透明度…", Toast.LENGTH_SHORT).show();
+        MediaLibrary.importEarbudImage(this, uri, new MediaLibrary.Callback() {
+            @Override public void onImported(String assetId) {
+                PopupConfig imported = DeviceStore.loadConfig(SetupActivity.this, targetModel);
+                imported.earbudAssetId = assetId;
+                DeviceStore.saveConfig(SetupActivity.this, targetModel, imported);
+                if (targetModel.equals(currentModelId())) {
+                    config = DeviceStore.loadConfig(SetupActivity.this, targetModel);
+                    updateEarbudSummary();
+                }
+                Toast.makeText(SetupActivity.this, "耳机透明图已保存到当前型号",
+                        Toast.LENGTH_SHORT).show();
+            }
+
+            @Override public void onError(String message) {
+                Toast.makeText(SetupActivity.this,
+                        message == null ? "耳机图导入失败，原配置已保留" : message,
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
     private void clearMedia() {
         config.assetId = "";
         saveConfig();
         updateMediaSummary();
+    }
+
+    private void clearEarbudImage() {
+        config.earbudAssetId = "";
+        saveConfig();
+        updateEarbudSummary();
     }
 
     private void resetProfile() {
@@ -726,6 +799,12 @@ public final class SetupActivity extends Activity {
         mediaView.setText(description + "\n素材仅用于 "
                 + (selected == null ? "未知型号" : DeviceModel.displayName(currentModelId()))
                 + " 配置。");
+    }
+
+    private void updateEarbudSummary() {
+        if (earbudView == null || config == null) return;
+        earbudView.setText(MediaLibrary.describeEarbud(
+                this, currentModelId(), config.earbudAssetId) + "\n仅在自定义背景时叠加。");
     }
 
     private void refreshStatus() {

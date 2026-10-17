@@ -144,6 +144,8 @@ public final class DeviceStore {
         value.fitCrop = prefs.getBoolean(prefix + "fitCrop", defaults.fitCrop);
         value.showBattery = prefs.getBoolean(prefix + "showBattery", defaults.showBattery);
         value.assetId = prefs.getString(prefix + "assetId", defaults.assetId);
+        value.showEarbuds = prefs.getBoolean(prefix + "showEarbuds", defaults.showEarbuds);
+        value.earbudAssetId = prefs.getString(prefix + "earbudAssetId", defaults.earbudAssetId);
         return sanitizeForModel(value, key);
     }
 
@@ -165,6 +167,8 @@ public final class DeviceStore {
                 .putBoolean(prefix + "fitCrop", value.fitCrop)
                 .putBoolean(prefix + "showBattery", value.showBattery)
                 .putString(prefix + "assetId", value.assetId)
+                .putBoolean(prefix + "showEarbuds", value.showEarbuds)
+                .putString(prefix + "earbudAssetId", value.earbudAssetId)
                 .apply();
     }
 

@@ -36,7 +36,7 @@ python scripts/build.py --sdk /path/to/android-sdk --platform 36 --build-tools 3
 python scripts/build.py --android-jar /path/to/android.jar --build-tools-dir /path/to/build-tools --unsigned
 ```
 
-输出为 `dist/Earbuds-Popup-1.0.3-unsigned.apk`。未签名 APK 需要签名后才能安装。
+输出为 `dist/Earbuds-Popup-1.0.5-unsigned.apk`。未签名 APK 需要签名后才能安装。
 
 ## 使用自己的签名密钥
 
@@ -48,6 +48,6 @@ $env:EARBUDS_KEY_PASSWORD = "你的密钥密码"
 python scripts/build.py --keystore "C:\keys\earbuds.jks" --alias earbuds
 ```
 
-签名模式会保留 unsigned APK，另输出 `dist/Earbuds-Popup-1.0.3-signed.apk`，并运行签名验证。工具输出和临时文件位于 `dist/`、`build/temp/`，均不提交到仓库。Releases 使用的签名私钥不公开。
+签名模式会保留 unsigned APK，另输出 `dist/Earbuds-Popup-1.0.5-signed.apk`，并运行签名验证。工具输出和临时文件位于 `dist/`、`build/temp/`，均不提交到仓库。Releases 使用的签名私钥不公开。
 
 不同签名不能直接覆盖已有安装。同一密钥用于后续升级，才能保留原应用数据。
